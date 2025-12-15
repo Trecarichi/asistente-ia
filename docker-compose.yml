@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------
+  # 1. SERVICIO OLLAMA (MODELO LLM - LIMPIO PARA CPU)
+  # ---------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-gemma
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+
+    # ESTA SECCIÓN HA SIDO CORREGIDA Y RE-INDENTADA.
+    # AHORA ESTÁ AL MISMO NIVEL QUE 'volumes' y 'restart'.
+    deploy:
+      resources:
+        limits:
+          memory: 8192m # Asigna 8 GB de límite
+        reservations:
+          memory: 6144m # Reserva 6 GB (ideal para modelos)
+
+    networks:
+      - iamjus-network
+
+  # ---------------------------------------------------
+  # 2. SERVICIO BACKEND FLASK (API)
+  # ---------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: iamjus-backend
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONUNBUFFERED=1
+      # Endpoint corregido para usar el nombre del servicio interno:
+      - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT:-http://ollama:11434}
+
+    depends_on:
+      - ollama
+
+    networks:
+      - iamjus-network
+
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "sh", "-c", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8001/\")'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------
+  # 3. SERVICIO FRONTEND (NGINX)
+  # ---------------------------------------------------
+  frontend:
+    image: nginx:alpine
+    container_name: iamjus-frontend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./chat.html:/usr/share/nginx/html/index.html:ro
+      - ./config.html:/usr/share/nginx/html/config.html:ro
+      - ./Pba_marca_bloque_wtmdpi.png:/usr/share/nginx/html/Pba_marca_bloque_wtmdpi.png:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - iamjus-network
+    restart: unless-stopped
+
+# ---------------------------------------------------
+# REDES Y VOLÚMENES
+# ---------------------------------------------------
+networks:
+  iamjus-network:
+    driver: bridge
+
+volumes:
+  ollama_data:

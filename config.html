@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración Asistente IA</title>
+    <style>
+        :root {
+            /* ¡NUEVO COLOR PRIMARIO VENDIBLE! (Violeta/Morado Tech) */
+            --primary-color: #7a30b6;
+            --gray-light: #f5f5f5;
+            --gray-medium: #e0e0e0;
+            --gray-dark: #666666;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--gray-light);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+
+        .header p {
+            margin: 0.5rem 0 0;
+            color: var(--gray-dark);
+        }
+
+        .config-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .config-title {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .prompt-editor {
+            width: 100%;
+            min-height: 400px;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border: 1px solid var(--gray-medium);
+            border-radius: 4px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        button {
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        button.edit {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        button.save {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background-color: var(--gray-medium);
+            cursor: not-allowed;
+        }
+
+        .status-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .status-message.success {
+            background-color: var(--gray-light);
+            color: var(--primary-color);
+            border: 1px solid var(--gray-medium);
+        }
+
+        .status-message.error {
+            background-color: var(--gray-light);
+            color: var(--gray-dark);
+            border: 1px solid var(--gray-medium);
+        }
+
+        .accordion {
+            margin-bottom: 1rem;
+        }
+
+        .accordion-header {
+            background: var(--gray-light);
+            padding: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .accordion-header:hover {
+            background: var(--gray-medium);
+        }
+
+        .accordion-title {
+            color: var(--primary-color);
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .chevron {
+            transition: transform 0.3s ease;
+        }
+
+        .accordion-header.active .chevron {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            display: none;
+            padding: 1rem;
+            background: white;
+            border: 1px solid var(--gray-medium);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Asistente IA</h1>
+        <p>Configuración del Sistema LLM</p>
+    </div>
+
+    <div class="config-container">
+        <div class="accordion">
+            <div class="accordion-header" onclick="toggleAccordion(this, 'promptSection')">
+                <h2 class="accordion-title">System Prompt del Modelo LLM</h2>
+                <span class="chevron">▼</span>
+            </div>
+            <div id="promptSection" class="accordion-content">
+                <textarea id="promptEditor" class="prompt-editor" disabled></textarea>
+                <div class="button-container">
+                    <button onclick="toggleEdit()" class="edit" id="editButton">Editar</button>
+                    <button onclick="savePrompt()" class="save" id="saveButton" disabled>Guardar</button>
+                </div>
+                <div id="statusMessage" class="status-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Funciones de acordeón
+        function toggleAccordion(header, sectionId) {
+            const content = document.getElementById(sectionId);
+            const isOpen = content.style.display === 'block';
+
+            // Cerrar todos los acordeones
+            document.querySelectorAll('.accordion-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.accordion-header').forEach(el => el.classList.remove('active'));
+
+            // Abrir/cerrar el acordeón clickeado
+            if (!isOpen) {
+                content.style.display = 'block';
+                header.classList.add('active');
+            }
+        }
+
+        // Funciones para el prompt del sistema
+        let isEditing = false;
+
+        function showStatus(message, elementId, isError = false) {
+            const statusEl = document.getElementById(elementId);
+            statusEl.textContent = message;
+            statusEl.style.display = 'block';
+            statusEl.className = 'status-message ' + (isError ? 'error' : 'success');
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 3000);
+        }
+
+        function toggleEdit() {
+            const editor = document.getElementById('promptEditor');
+            const editButton = document.getElementById('editButton');
+            const saveButton = document.getElementById('saveButton');
+
+            isEditing = !isEditing;
+            editor.disabled = !isEditing;
+            saveButton.disabled = !isEditing;
+            editButton.textContent = isEditing ? 'Cancelar' : 'Editar';
+
+            if (!isEditing) {
+                loadPrompt();
+            }
+        }
+
+        function loadPrompt() {
+            fetch('./get_prompt')
+                .then(response => response.text())
+                .then(content => {
+                    document.getElementById('promptEditor').value = content;
+                })
+                .catch(error => {
+                    showStatus('Error al cargar el prompt: ' + error.message, 'statusMessage', true);
+                });
+        }
+
+        function savePrompt() {
+            const content = document.getElementById('promptEditor').value;
+
+            fetch('./save_prompt', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showStatus('Prompt guardado correctamente', 'statusMessage');
+                        toggleEdit();
+                    } else {
+                        showStatus('Error al guardar: ' + data.error, 'statusMessage', true);
+                    }
+                })
+                .catch(error => {
+                    showStatus('Error al guardar: ' + error.message, 'statusMessage', true);
+                });
+        }
+
+        // Cargar todo el contenido al iniciar
+        loadPrompt();
+    </script>
+</body>
+
+</html>

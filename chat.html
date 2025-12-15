@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente IA - Soluciones Empresariales</title>
+    <style>
+        :root {
+            /* ¡NUEVO COLOR PRIMARIO VENDIBLE! (Violeta/Morado Tech) */
+            --primary-color: #7a30b6;
+            --secondary-color: #5d258f;
+            /* Un tono más oscuro para hover */
+            --gray-light: #f5f5f5;
+            --gray-medium: #e0e0e0;
+            --gray-dark: #666666;
+        }
+
+        /* Tema oscuro: Ajustamos el fondo para el modo oscuro */
+        [data-theme="dark"] {
+            --gray-light: #121212;
+            --gray-medium: #2a2a2a;
+            --gray-dark: #e0e0e0;
+            --header-bg: #1a1a1a;
+            --container-bg: #1a1a1a;
+            --chatbox-bg: #0f0f0f;
+            --input-bg: #121212;
+            --border-color: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--gray-light);
+            color: var(--gray-dark);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s;
+        }
+
+        .header {
+            background-color: var(--header-bg, white);
+            /* Usa white en light, #1a1a1a en dark */
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            position: relative;
+            flex: 0 0 auto;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background: var(--primary-color);
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .chat-container {
+            max-width: 800px;
+            width: 100%;
+            margin: 1rem auto;
+            background: var(--container-bg, white);
+            /* Usa white en light, #1a1a1a en dark */
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+            /* Sombra más pronunciada */
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .chat-box {
+            overflow-y: auto;
+            padding: 1rem;
+            border: 1px solid var(--border-color, var(--gray-medium));
+            border-radius: 8px;
+            background: var(--chatbox-bg, var(--gray-light));
+            margin-bottom: 1rem;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        .message {
+            margin: 1rem 0;
+            padding: 0.8rem 1.5rem;
+            /* Ajustado el padding */
+            border-radius: 8px;
+            max-width: 85%;
+            /* Ligeramente más ancho */
+            position: relative;
+            overflow-wrap: anywhere;
+        }
+
+        .user {
+            background-color: var(--primary-color);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 2px;
+            /* Pequeño detalle de diseño */
+        }
+
+        .assistant {
+            background-color: var(--container-bg, white);
+            /* Fondo blanco/oscuro del contenedor */
+            border: 1px solid var(--primary-color);
+            /* Borde con el color de marca */
+            margin-right: auto;
+            color: var(--gray-dark);
+            border-bottom-left-radius: 2px;
+            /* Pequeño detalle de diseño */
+        }
+
+        .input-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 0.8rem;
+            border: 1px solid var(--border-color, var(--gray-medium));
+            border-radius: 6px;
+            font-size: 1rem;
+            resize: none;
+            overflow-y: auto;
+            line-height: 1.4;
+            max-height: 200px;
+            background-color: var(--input-bg, white);
+            color: var(--gray-dark);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: var(--secondary-color);
+            /* Usamos el color secundario */
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .button-loading:after {
+            border-top-color: #ffffff;
+            /* El resto del spinner queda igual */
+        }
+
+        /* Secundario: botón "Limpiar" */
+        .btn-secondary {
+            background-color: #4a4a4a;
+            /* Gris oscuro para contraste */
+            color: #ffffff;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #333333;
+        }
+
+        /* QUICK ACTIONS */
+        .quick-actions {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            /* Menos espacio */
+            flex-wrap: wrap;
+        }
+
+        .quick-action {
+            background: var(--input-bg, white);
+            border: 1px solid var(--border-color, var(--gray-medium));
+            padding: 0.4rem 0.9rem;
+            /* Ligeramente más pequeño */
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--gray-dark);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-action:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 2px 5px rgba(122, 48, 182, 0.4);
+            /* Sombra con el color primario */
+        }
+
+        .quick-actions-title {
+            width: 100%;
+            font-size: 0.9rem;
+            color: var(--gray-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Overrides de modo oscuro */
+        [data-theme="dark"] .header {
+            background-color: var(--header-bg);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+        }
+
+        [data-theme="dark"] .chat-container {
+            background-color: var(--container-bg);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+        }
+
+        [data-theme="dark"] .chat-box {
+            background-color: var(--chatbox-bg);
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .assistant {
+            background-color: var(--chatbox-bg);
+            /* Fondo del chatbox para que se integre */
+            border-color: var(--primary-color);
+            color: var(--gray-dark);
+        }
+
+        [data-theme="dark"] #user-input {
+            background-color: var(--input-bg);
+            color: var(--gray-dark);
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .quick-action {
+            background-color: var(--input-bg);
+            border-color: var(--border-color);
+            color: var(--gray-dark);
+        }
+
+        [data-theme="dark"] .btn-secondary {
+            background-color: #2f2f2f;
+            color: #ffffff;
+            border: 1px solid #3a3a3a;
+        }
+
+        /* ... (El resto de estilos media query permanecen igual) ... */
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <button id="theme-toggle" class="theme-toggle" aria-label="Cambiar tema" title="Cambiar tema">🌙</button>
+        <h1>Asistente IA</h1>
+        <p>Asistente de Clasificación y Soporte</p>
+    </div>
+
+    <div class="chat-container">
+        <div id="chat-box" class="chat-box"></div>
+        <div class="input-container">
+            <textarea id="user-input" placeholder="Escribí tu consulta acá..." rows="1"></textarea>
+            <button id="send-button">Enviar</button>
+            <button id="clear-button" class="btn-secondary">Limpiar</button>
+        </div>
+        <div class="quick-actions">
+            <p class="quick-actions-title">Accesos rápidos:</p>
+            <span class="quick-action">Consultar estado de cuenta</span>
+            <span class="quick-action">Pedir soporte técnico</span>
+            <span class="quick-action">Consultar horario de atención</span>
+            <span class="quick-action">Problema con la plataforma</span>
+        </div>
+    </div>
+    <button id="fab-send" class="fab-send" aria-label="Enviar">➤</button>
+
+    <script>
+        // ... (Tu JavaScript anterior para funcionalidad y autoexpansión permanece igual) ...
+        var sessionId = Math.random().toString(36).substring(2);
+
+        // Autoexpansión del textarea según contenido
+        const userInput = document.getElementById('user-input');
+        userInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            // Habilitar/deshabilitar el botón flotante según haya texto
+            const fab = document.getElementById('fab-send');
+            const sendButton = document.getElementById('send-button');
+            if (fab) {
+                const hasText = this.value.trim().length > 0;
+                fab.disabled = !hasText || sendButton.disabled;
+            }
+        });
+        // Estado inicial del FAB
+        (function initFabState() {
+            const fab = document.getElementById('fab-send');
+            const sendButton = document.getElementById('send-button');
+            if (fab && sendButton) {
+                fab.disabled = true;
+            }
+        })();
+
+        function appendMessage(role, content) {
+            content = (content || "").toString(); // asegurar string siempre
+            var messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', role);
+
+            if (role === 'assistant') {
+                // Formateo mínimo permitido para el asistente
+                let formatted = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                formatted = formatted.replace(
+                    /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/g,
+                    '<a href="mailto:$1">$1</a>'
+                );
+
+                const lines = formatted.split(/\n/);
+                let html = "";
+                let inOrderedList = false;
+                let inUnorderedList = false;
+
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    // Detectar listas ordenadas (1., 2., etc.)
+                    if (/^\d+\./.test(trimmed)) {
+                        if (inUnorderedList) { html += "</ul>"; inUnorderedList = false; }
+                        if (!inOrderedList) { html += "<ol>"; inOrderedList = true; }
+                        html += "<li>" + trimmed.replace(/^\d+\.\s*/, "") + "</li>";
+                    }
+                    // Detectar listas desordenadas (- )
+                    else if (/^- /.test(trimmed)) {
+                        if (inOrderedList) { html += "</ol>"; inOrderedList = false; }
+                        if (!inUnorderedList) { html += "<ul>"; inUnorderedList = true; }
+                        html += "<li>" + trimmed.replace(/^- /, "") + "</li>";
+                    }
+                    // Párrafo
+                    else if (trimmed !== "") {
+                        if (inOrderedList) { html += "</ol>"; inOrderedList = false; }
+                        if (inUnorderedList) { html += "</ul>"; inUnorderedList = false; }
+                        html += "<p>" + trimmed + "</p>";
+                    }
+                });
+                if (inOrderedList) html += "</ol>";
+                if (inUnorderedList) html += "</ul>";
+
+                messageDiv.innerHTML = html;
+            } else {
+                // Usuario: evitar inyección, renderizar como texto plano
+                messageDiv.textContent = content;
+            }
+
+            const chatBox = document.getElementById('chat-box');
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+
+        function showThinking(show) {
+            const chatBox = document.getElementById('chat-box');
+            let loaderMsg = document.getElementById('thinking-loader');
+            if (show) {
+                if (!loaderMsg) {
+                    loaderMsg = document.createElement('div');
+                    loaderMsg.id = 'thinking-loader';
+                    loaderMsg.className = 'message assistant thinking-message';
+                    loaderMsg.innerHTML = '<div class="loader" aria-label="Cargando"></div>';
+                    chatBox.appendChild(loaderMsg);
+                }
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } else {
+                if (loaderMsg) loaderMsg.remove();
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value;
+            if (message.trim() === "") return;
+
+            const sendButton = document.getElementById('send-button');
+            if (sendButton.disabled) return; // evitar dobles envíos
+
+            // Deshabilitar botón + spinner
+            sendButton.disabled = true;
+            sendButton.classList.add('button-loading');
+            sendButton.textContent = 'Enviando...';
+            const fab = document.getElementById('fab-send');
+            if (fab) fab.disabled = true;
+
+            appendMessage('user', message);
+            showThinking(true);
+            sendMessageToBackend(message);
+            input.value = '';
+            userInput.style.height = 'auto'; // Resetea la altura del textarea
+        }
+
+        function removeThinkTags(text) {
+            return text.replace(/<think>.*?<\/think>/gs, '').trim();
+        }
+
+        function sendMessageToBackend(message) {
+            fetch('./generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    prompt: message
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showThinking(false);
+
+                    // --- Bloque de Manejo de Respuesta JSON Estructurada ---
+                    let responseText = 'Lo siento, no pude obtener una respuesta válida o el modelo devolvió un formato incorrecto.';
+
+                    if (data && data.content) {
+                        const content = data.content;
+                        let output = '';
+
+                        // 1. Mostrar la clasificación y urgencia (si existen)
+                        if (content.Clasificacion || content.Urgencia) {
+                            output += `**Clasificación:** ${content.Clasificacion || 'No definido'}`;
+                            if (content.Urgencia) {
+                                output += ` | **Urgencia:** ${content.Urgencia}\n\n`;
+                            } else {
+                                output += `\n\n`;
+                            }
+                        }
+
+                        // 2. Mostrar la respuesta principal (la que generamos para el usuario final)
+                        if (content.respuesta_extendida) {
+                            output += content.respuesta_extendida;
+                        } else if (content.resumen_acciones) {
+                            output += content.resumen_acciones; // Fallback si el prompt viejo está activo
+                        }
+
+                        // Usar el output construido si tiene contenido.
+                        if (output.trim().length > 0) {
+                            responseText = output;
+                        }
+                    }
+                    // 3. Manejar errores explícitos del backend (ej. si Flask detecta un error)
+                    else if (data && data.error) {
+                        if (data.raw_output) {
+                            responseText = `**Error de Clasificación (ERROR_MODELO):** La IA no devolvió un JSON limpio. \n\n**Output crudo de la IA:** \n\n<pre>${data.raw_output}</pre>`;
+                        } else {
+                            responseText = 'Error del servidor: ' + data.error;
+                        }
+                    }
+                    // 4. Fallback si la respuesta es texto plano directo
+                    else if (typeof data === 'string') {
+                        responseText = data;
+                    }
+
+                    // Limpia tags (<think>)
+                    let finalContent = removeThinkTags(responseText);
+
+                    if (finalContent.trim() === '') {
+                        finalContent = 'No recibí una acción o resumen claro del servidor. Intenta con una pregunta más específica.';
+                    } else if (finalContent.includes('ERROR_MODELO')) {
+                        // Si es el error detallado, lo mostramos tal cual
+                        finalContent = responseText;
+                    }
+
+                    appendMessage('assistant', finalContent);
+                })
+                .catch(error => {
+                    showThinking(false);
+                    appendMessage('assistant', `Error de conexión: No se pudo contactar al servidor de IA. Revisa Docker. (${error.message})`);
+                })
+                .finally(() => {
+                    const sendButton = document.getElementById('send-button');
+                    sendButton.disabled = false;
+                    sendButton.classList.remove('button-loading');
+                    sendButton.textContent = 'Enviar';
+                    const fab = document.getElementById('fab-send');
+                    if (fab) fab.disabled = false;
+                });
+        }
+
+        // Asignar funciones a los botones
+        document.getElementById('send-button').addEventListener('click', sendMessage);
+        document.getElementById('user-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        document.getElementById('fab-send').addEventListener('click', sendMessage);
+
+        document.getElementById('clear-button').addEventListener('click', function () {
+            document.getElementById('chat-box').innerHTML = '';
+            document.getElementById('user-input').value = '';
+            userInput.style.height = 'auto';
+        });
+
+        // Manejar Quick Actions
+        document.querySelectorAll('.quick-action').forEach(action => {
+            action.addEventListener('click', function () {
+                const text = this.textContent.trim();
+                document.getElementById('user-input').value = text;
+                // Forzar autoexpansión y habilitar botones al cargar texto
+                userInput.dispatchEvent(new Event('input'));
+                sendMessage();
+            });
+        });
+
+        // Manejo del tema (modo oscuro)
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+
+        function updateTheme() {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            htmlElement.setAttribute('data-theme', newTheme);
+            themeToggle.textContent = newTheme === 'dark' ? '☀️' : '🌙'; // Sol para dark, Luna para light
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Cargar tema desde localStorage o usar 'dark' por defecto
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        htmlElement.setAttribute('data-theme', savedTheme);
+        themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+
+        themeToggle.addEventListener('click', updateTheme);
+    </script>
+</body>
+
+</html>

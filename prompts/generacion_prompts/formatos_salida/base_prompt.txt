@@ -1,0 +1,13 @@
+# PROMPT GENERADO
+
+Contexto:
+{{datos_txt/contexto.txt}}
+
+Identidad y Comportamiento:
+{{restricciones/identidad_comportamiento.txt}}
+
+Manejo de Consultas:
+{{datos_txt/manejo_consultas.txt}}
+
+Limitaciones:
+{{restricciones/limitaciones.txt}}
