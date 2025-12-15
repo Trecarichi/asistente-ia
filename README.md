@@ -29,5 +29,5 @@ El backend utiliza una técnica de **Prompt Engineering** que fuerza al LLM a de
 {
   "Clasificacion": "BENEFICIOS",
   "Urgencia": "2",
-  "respuesta_extendida": "¿Qué beneficios te ofrece la escritura de tu propiedad?..." 
+  "respuesta_extendida": "¿Qué beneficios te ofrece la escritura de tu propiedad?..."
 }
