@@ -1,14 +1,3 @@
-El README.md que me envías está muy bien y es una base excelente. Es claro, conciso y explica el valor técnico (Robustez, Contenerización, JSON Prompting).
-
-Sin embargo, para maximizar el impacto en GitHub y que el evaluador comprenda la solución completa en minutos, necesita dos elementos clave que actualmente faltan o están minimizados:
-
-    Diagrama de Arquitectura Visual: Un esquema es mucho más rápido de procesar que una tabla.
-
-    El punto RAG: El Retrieval-Augmented Generation (RAG) es el mayor diferenciador de ingeniería, ¡y actualmente está ausente del README!
-
-📝 Sugerencias de Mejora para el README
-
-Aquí te muestro cómo podrías reorganizarlo y añadir el valor que falta.
 🚀 Asistente Inteligente de Clasificación y Respuesta (LLM Robusto con RAG)
 
 Este proyecto es un Producto Mínimo Viable (MVP) diseñado para automatizar la clasificación de consultas no estructuradas (emails, tickets, chats) y generar respuestas informativas de primera línea utilizando un Modelo de Lenguaje Grande (LLM) desplegado localmente.
