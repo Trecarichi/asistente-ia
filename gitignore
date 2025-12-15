@@ -1,0 +1,39 @@
+# ----------------------------------------------------------------------
+# ARCHIVOS GENERADOS POR PYTHON (IGNORAR SIEMPRE)
+# ----------------------------------------------------------------------
+__pycache__/
+*.pyc
+*.log
+*.sqlite
+.env
+
+# ----------------------------------------------------------------------
+# ESPECÍFICOS DEL PROYECTO (BORRADORES, PRUEBAS Y GENERADOS)
+# ----------------------------------------------------------------------
+
+# Base de datos generada (SQLite) - ¡CLAVE!
+municipios.db
+
+# Borradores de código intermedio y versiones antiguas
+fechador.py
+logica_ollama_base.py
+prueba.py
+salida.txt
+ollama_refactoring*.py
+
+# Carpetas de borradores (Si moviste el README a la raíz, se ignoran)
+docs/
+prompts/
+scripts/
+
+# ----------------------------------------------------------------------
+# ESPECÍFICOS DEL ENTORNO DE DESARROLLO (VS CODE, etc.)
+# ----------------------------------------------------------------------
+
+# Directorios de configuración del editor VS Code
+.vscode/
+
+# Ignorar archivos de paquetes y distribución
+# (Si usaras venv, se añadiría venv/)
+dist/
+build/
