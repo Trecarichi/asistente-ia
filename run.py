@@ -282,9 +282,7 @@ def MunicipioNameFromDict(d: Dict[str, str]) -> str:
     for k, v in d.items():
         if v:
             return v
-    return "Desconocido" # <-- Fin de la función
-
-# La indentación fallaba después de aquí
+    return "Desconocido" 
 
 def format_municipio_data(data: Dict[str, str]) -> str:
     nombre = (
@@ -750,8 +748,8 @@ def generate():
 
         
         # --- Resultado Final del Procesamiento ---
-        # Verificamos que se haya parseado algo y que contenga el campo clave 'departamento'
-        if parsed_json and isinstance(parsed_json, dict) and "departamento" in parsed_json:
+        # *** AJUSTE CRÍTICO: Verificamos el campo 'Clasificacion' ***
+        if parsed_json and isinstance(parsed_json, dict) and "Clasificacion" in parsed_json:
             # Éxito: Devolvemos el objeto JSON clasificado
             return jsonify({
                 "role": "assistant",
@@ -761,15 +759,18 @@ def generate():
             })
         else:
             # Fallo: La IA no devolvió un JSON válido y/o no contenía el campo clave.
-            app.logger.error("JSONDecodeError: Fallo en la extracción de JSON o campo 'departamento' faltante.")
+            app.logger.error("JSONDecodeError: Fallo en la extracción de JSON o campo 'Clasificacion' faltante.")
             
-            # Devolvemos un fallback estructurado con la respuesta RAW de la IA
+            # *** AJUSTE: Devolvemos un fallback que el Frontend puede renderizar ***
             return jsonify({
                 "role": "assistant",
                 "content": {
-                    "urgencia": 0,
-                    "departamento": "ERROR_MODELO",
-                    "descripcion_corta": "Fallo al clasificar. Output raw (inicio): " + raw_response[:200]
+                    "Urgencia": "5", # Urgencia alta para error
+                    "Clasificacion": "ERROR_MODELO", 
+                    "respuesta_extendida": 
+                        "**Error de Clasificación (Modelo Fallido):** La IA no pudo generar el formato de datos necesario. " +
+                        "Esto ocurre si la pregunta es muy corta o el modelo falló. " +
+                        "**Output crudo:** " + raw_response[:200] + "..." 
                 },
                 "session_id": session_id,
                 "type": "error_fallback"
@@ -778,6 +779,38 @@ def generate():
     except Exception as e:
         app.logger.exception("Error general en /generate: %s", e)
         return jsonify({"error": str(e)}), 500
+
+# -----------------------------------------------------------------------------
+# Rutas de Configuración (get/save_prompt)
+# -----------------------------------------------------------------------------
+@app.route("/get_prompt", methods=["GET"])
+def get_prompt():
+    try:
+        with open("system_prompt.txt", "r", encoding="utf-8") as f:
+            return f.read(), 200, {"Content-Type": "text/plain"}
+    except FileNotFoundError:
+        return "El archivo system_prompt.txt no existe.", 404
+
+@app.route("/save_prompt", methods=["POST"])
+def save_prompt():
+    try:
+        data = request.get_json()
+        if not data or 'content' not in data:
+            return jsonify({"success": False, "error": "Contenido no proporcionado"}), 400
+
+        new_content = data['content']
+        with open("system_prompt.txt", "w", encoding="utf-8") as f:
+            f.write(new_content)
+        
+        # Recargar el prompt en memoria después de guardar
+        global SYSTEM_PROMPT
+        SYSTEM_PROMPT = load_system_prompt()
+        
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        app.logger.exception("Error guardando el prompt: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 # -----------------------------------------------------------------------------
 # Run (Sin Indentación al inicio)
