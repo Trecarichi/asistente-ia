@@ -1,33 +1,61 @@
-# 🚀 Asistente Inteligente de Clasificación y Respuesta (LLM Robusto)
+El README.md que me envías está muy bien y es una base excelente. Es claro, conciso y explica el valor técnico (Robustez, Contenerización, JSON Prompting).
 
-Este proyecto es un **Producto Mínimo Viable (MVP)** diseñado para automatizar la clasificación de consultas no estructuradas (emails, tickets, chats) y generar respuestas informativas de primera línea utilizando un Modelo de Lenguaje Grande (LLM) desplegado localmente.
+Sin embargo, para maximizar el impacto en GitHub y que el evaluador comprenda la solución completa en minutos, necesita dos elementos clave que actualmente faltan o están minimizados:
 
-## ✨ Valor Único: Robustez y Estabilidad
+    Diagrama de Arquitectura Visual: Un esquema es mucho más rápido de procesar que una tabla.
+
+    El punto RAG: El Retrieval-Augmented Generation (RAG) es el mayor diferenciador de ingeniería, ¡y actualmente está ausente del README!
+
+📝 Sugerencias de Mejora para el README
+
+Aquí te muestro cómo podrías reorganizarlo y añadir el valor que falta.
+🚀 Asistente Inteligente de Clasificación y Respuesta (LLM Robusto con RAG)
+
+Este proyecto es un Producto Mínimo Viable (MVP) diseñado para automatizar la clasificación de consultas no estructuradas (emails, tickets, chats) y generar respuestas informativas de primera línea utilizando un Modelo de Lenguaje Grande (LLM) desplegado localmente.
+✨ Valor Único: Robustez y Estabilidad en Producción
 
 A diferencia de las soluciones demo, esta arquitectura está optimizada para la producción en entornos con recursos limitados.
+Desafío Resuelto	Solución de Ingeniería
+Out of Memory (OOM) LLM Fallos (Problema común al correr modelos LLM en Docker).	Implementación de reserva de recursos fijos (deploy: resources: en docker-compose.yml) para garantizar la estabilidad del servicio Ollama y asegurar un uptime continuo.
+Respuestas Genéricas/Sin Contexto (Problema de los LLM base).	Integración de RAG (Retrieval-Augmented Generation): Uso de una base de datos SQLite para inyectar información específica (ej: datos de municipios) al contexto del LLM, garantizando respuestas precisas y contextualizadas.
+Salida No Estándar (Fallos de JSON) (Problema de integración con sistemas de negocio).	Mecanismo de Fallback JSON con Regex: Implementación de un parser avanzado que usa expresiones regulares para extraer el objeto JSON, incluso si el LLM falla al envolverlo en texto o Markdown.
+⚙️ Arquitectura Técnica
 
-El principal desafío técnico resuelto fue el error de "Out of Memory" (`signal: killed`) común al correr modelos LLM en Docker.
+La solución es 100% contenerizada y utiliza tres microservicios, lo que garantiza la portabilidad y el despliegue On-Premise.
+Componente	Tecnología	Propósito Clave
+Frontend	HTML/CSS/JS	Interfaz de chat personalizable con modo oscuro.
+Backend	Python / Flask	API REST, lógica de RAG y manejo de la sesión y LLM Fallback.
+Datos RAG	SQLite / CSV	Fuente de datos para inyección de contexto.
+LLM	Ollama (Gemma 2B)	Servidor de inferencia del modelo de lenguaje.
+Orquestación	Docker Compose	Despliegue de los servicios con configuración de recursos fijos.
+💡 Flujo de Trabajo y Prompt Engineering
 
-- **Solución de Ingeniería:** Implementación de **reserva de recursos fijos** (`deploy: resources:` en `docker-compose.yml`) para garantizar la estabilidad del servicio Ollama y prevenir fallos en la clasificación, asegurando un **uptime continuo**.
+El backend utiliza técnicas avanzadas para garantizar la fiabilidad del resultado:
 
-## ⚙️ Arquitectura Técnica
+    Generación Aumentada (RAG): Si la consulta del usuario menciona una entidad clave (ej: un municipio o producto), el backend busca la información relevante en SQLite (datos_tierras.csv) y la añade automáticamente al prompt para el LLM.
 
-La solución es 100% contenerizada, lo que garantiza la portabilidad y el despliegue On-Premise (en la infraestructura del cliente).
+    Salida Estructurada (JSON Mode): El prompt fuerza al LLM a devolver una estructura de datos JSON estandarizada, crucial para la integración con sistemas de negocio (CRM, Ticketing):
+    JSON
 
-| Componente | Tecnología | Propósito |
-| :--- | :--- | :--- |
-| **Frontend** | HTML/CSS/JavaScript | Interfaz de chat moderna y personalizable (Modo Oscuro incluido). |
-| **Backend** | Python / Flask | API REST para manejar la sesión y la comunicación con el LLM. |
-| **LLM** | Ollama (Gemma 2B) | Servidor de inferencia del modelo de lenguaje. |
-| **Orquestación** | Docker Compose | Despliegue de los tres servicios con configuración de recursos. |
+    {
+      "Clasificacion": "BENEFICIOS",
+      "Urgencia": "2",
+      "respuesta_extendida": "¿Qué beneficios te ofrece la escritura de tu propiedad?..."
+    }
 
-## 💡 Flujo de Trabajo (Prompt Engineering)
+¿Cómo Empezar? (Instrucciones de Despliegue)
 
-El backend utiliza una técnica de **Prompt Engineering** que fuerza al LLM a devolver una estructura de datos JSON estandarizada, crucial para la integración con sistemas de negocio (CRM, Ticketing):
+1. Requisitos:
 
-```json
-{
-  "Clasificacion": "BENEFICIOS",
-  "Urgencia": "2",
-  "respuesta_extendida": "¿Qué beneficios te ofrece la escritura de tu propiedad?..."
-}
+    Docker y Docker Compose instalados.
+
+    Conexión a internet estable (para descargar el modelo Gemma 2B la primera vez).
+
+2. Despliegue de la Solución (Un solo comando):
+Bash
+
+docker-compose up --build
+
+    NOTA: El modelo Gemma 2B se descargará automáticamente la primera vez.
+
+3. Acceso a la Interfaz: Abra su navegador y acceda a: http://localhost:8080
