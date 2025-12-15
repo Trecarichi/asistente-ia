@@ -12,17 +12,16 @@ import time
 from typing import Dict, List, Optional
 import bleach
 import json 
-# Se usa re para la nueva lógica de extracción de JSON
 import re 
 
 # -----------------------------------------------------------------------------
-# Configuración básica (DEBE ESTAR AL PRINPIO)
+# Configuración básica
 # -----------------------------------------------------------------------------
 app = Flask(__name__, static_folder=".")
 CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_LENGTH", "1048576"))
 
-# HTML sanitization policy for assistant content
+# Política de sanitización HTML
 ALLOWED_TAGS = [
     'p', 'ol', 'ul', 'li', 'strong', 'em', 'br', 'a', 'div', 'span', 'h1', 'h2', 'h3', 'code'
 ]
@@ -41,7 +40,6 @@ def sanitize_html(html: str) -> str:
         protocols=ALLOWED_PROTOCOLS,
         strip=True,
     )
-    # Ensure external links are safe
     return cleaned.replace('<a ', '<a rel="noopener noreferrer" ')
 
 
@@ -66,11 +64,9 @@ def set_security_headers(resp):
     resp.headers.setdefault('Permissions-Policy', 'geolocation=(), camera=(), microphone=()')
     return resp
 
-# Configurar endpoints de Ollama desde variables de entorno o usar valores por defecto
-# --- CORRECCIÓN CLAVE AQUÍ: Usamos el nombre del servicio Docker 'ollama' y el puerto 11434 ---
+# Configuración de Ollama: usa el nombre del servicio Docker 'ollama'
 OLLAMA_ENDPOINT_DEFAULT = "http://ollama:11434"
 
-# Si solo usas un único contenedor de Ollama, simplificamos la lista a solo ese endpoint
 OLLAMA_ENDPOINTS = [
     os.getenv("OLLAMA_ENDPOINT", OLLAMA_ENDPOINT_DEFAULT),
 ]
@@ -88,10 +84,8 @@ _gpu_semaphore = threading.Semaphore(MAX_CONCURRENT_GPU)
 
 CSV_PATH = "reescribiendo_bases/datos_tierras.csv"
 DB_NAME = "municipios.db"
-SIMILARITY_THRESHOLD = 0.85  # 0..1 for SequenceMatcher
+SIMILARITY_THRESHOLD = 0.85
 
-# Historial y municipios por sesión
-# Aunque ya no es un chat, mantenemos las estructuras para evitar errores de referencia
 chat_history_by_session: Dict[str, List[Dict[str, str]]] = {}
 municipio_consultado_by_session: Dict[str, List[Dict[str, str]]] = {}
 
@@ -112,7 +106,7 @@ def _ip_allow(ip: str) -> bool:
     if bucket is None:
         bucket = {"tokens": float(RATE_LIMIT_BURST), "last": now}
         _ip_buckets[ip] = bucket
-    elapsed = max(0.0, now - bucket["last"])  # seconds
+    elapsed = max(0.0, now - bucket["last"])
     refill_per_sec = RATE_LIMIT_RPM / 60.0
     bucket["tokens"] = min(float(RATE_LIMIT_BURST), bucket["tokens"] + elapsed * refill_per_sec)
     bucket["last"] = now
@@ -133,38 +127,15 @@ def _release_gpu():
         pass
 
 # -----------------------------------------------------------------------------
-# Keywords y respuestas predefinidas (Mantener)
+# Keywords y respuestas predefinidas (Se mantienen por ser datos)
 # -----------------------------------------------------------------------------
 KEYWORDS_DIRECCIONES = [
-    "direcciones",
-    "ubicación",
-    "donde ir",
-    "dirección",
-    "direccion",
-    "ubicacion",
-    "oficina",
-    "sede",
-    "dónde ir",
-    "donde queda",
-    "dónde queda",
-    "atención del municipio",
-    "atencion del municipio",
-    "horario de atención",
-    "horario de atencion",
-    "teléfono",
-    "telefono",
-    "email",
-    "correo",
+    "direcciones", "ubicación", "donde ir", "dirección", "direccion", "ubicacion", "oficina", "sede",
+    "dónde ir", "donde queda", "dónde queda", "atención del municipio", "horario de atención",
+    "teléfono", "telefono", "email", "correo",
 ]
 KEYWORDS_BENEFICIOS = ["beneficio", "beneficios", "ganancias", "ventajas", "a favor"]
-KEYWORDS_REQUISITOS = [
-    "requisitos",
-    "papeles",
-    "documentos",
-    "que necesito",
-    "qué necesito",
-    "escriturar",
-]
+KEYWORDS_REQUISITOS = ["requisitos", "papeles", "documentos", "que necesito", "qué necesito", "escriturar"]
 
 BENEFITS_STRING = """ <div>
     <h2>BENEFICIOS DE ESCRITURAR</h2>
@@ -246,18 +217,7 @@ def normalize_text(s: str) -> str:
         return ""
     s = s.lower().strip()
     replacements = {
-        "á": "a",
-        "é": "e",
-        "í": "i",
-        "ó": "o",
-        "ú": "u",
-        "Á": "a",
-        "É": "e",
-        "Í": "i",
-        "Ó": "o",
-        "Ú": "u",
-        "ñ": "n",
-        "Ñ": "n",
+        "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u", "Á": "a", "É": "e", "Í": "i", "Ó": "o", "Ú": "u", "ñ": "n", "Ñ": "n",
     }
     for a, b in replacements.items():
         s = s.replace(a, b)
@@ -293,23 +253,16 @@ def format_municipio_data(data: Dict[str, str]) -> str:
     )
     lines = [f"**Información de la oficina en {nombre}:**\n"]
     mapping = {
-        "DEPENDENCIA": "Dependencia",
-        "DIRECCION": "Dirección",
-        "DIRECCIÓN": "Dirección",
-        "TELEFONO": "Teléfono",
-        "TELÉFONO": "Teléfono",
-        "WHATSAPP": "WhatsApp",
-        "HORARIO": "Horario",
-        "EMAIL": "Email",
-        "LOCALIDADES": "Localidades",
-        "CABECERA": "Cabecera", # Agregamos Cabecera
+        "DEPENDENCIA": "Dependencia", "DIRECCION": "Dirección", "DIRECCIÓN": "Dirección", 
+        "TELEFONO": "Teléfono", "TELÉFONO": "Teléfono", "WHATSAPP": "WhatsApp", 
+        "HORARIO": "Horario", "EMAIL": "Email", "LOCALIDADES": "Localidades", "CABECERA": "Cabecera",
     }
     # Priorizamos dirección y dependencia
     for key in ["DEPENDENCIA", "DIRECCION", "DIRECCIÓN"]:
         if key in data and data[key]:
             lines.append(f"**{mapping.get(key, key)}:** {data[key]}")
             
-    # Agregamos las otras columnas, incluyendo LOCALIDADES y CABECERA
+    # Agregamos las otras columnas
     for key, label in mapping.items():
         if key in ["DEPENDENCIA", "DIRECCION", "DIRECCIÓN"]:
             continue
@@ -320,33 +273,31 @@ def format_municipio_data(data: Dict[str, str]) -> str:
 
 
 # -----------------------------------------------------------------------------
-# DB y CSV
+# DB y CSV (RAG Component)
 # -----------------------------------------------------------------------------
 def create_and_populate_db_if_needed():
-    """Crea la base de datos SQLite desde el CSV si no existe."""
+    """Crea la base de datos SQLite desde el CSV si no existe, o si es la primera vez."""
     if not os.path.exists(CSV_PATH):
         app.logger.warning(f"CSV de municipios no encontrado en {CSV_PATH}")
         return
     
-    # Solo crear la DB si no existe
     if os.path.exists(DB_NAME):
-        app.logger.info(f"DB {DB_NAME} ya existe, no se recrea.")
+        app.logger.info(f"DB {DB_NAME} ya existe.")
         return
 
     try:
-        app.logger.info(f"Creando DB {DB_NAME} desde CSV...")
+        app.logger.info(f"Creando DB {DB_NAME} desde CSV para RAG...")
         conn = sqlite3.connect(DB_NAME)
-        # Especificamos dtype=str para leer todas las columnas como string y evitar problemas
+        # Lectura como string para evitar errores de tipo en la DB
         df = pd.read_csv(CSV_PATH, dtype=str, keep_default_na=False)
         df.columns = [normalize_column_name(c) for c in df.columns]
         
-        # Verificar si existe la columna CABECERA
         if "CABECERA" not in df.columns:
             app.logger.warning("Columna CABECERA no encontrada en CSV.")
 
         df.to_sql("municipios", conn, if_exists="replace", index=False)
         conn.close()
-        app.logger.info("DB de municipios creada exitosamente desde CSV.")
+        app.logger.info("DB de municipios creada exitosamente.")
     except Exception as e:
         app.logger.exception("Error creando DB desde CSV: %s", e)
 
@@ -360,7 +311,7 @@ def get_db_connection():
 
 
 def search_municipio(municipio_name: str) -> Optional[Dict[str, str]]:
-    """Busca en DB por municipio, localidad o cabecera (difuso)."""
+    """Búsqueda difusa de municipio, localidad o cabecera en DB."""
     if not municipio_name:
         return None
     q = normalize_text(municipio_name)
@@ -368,7 +319,6 @@ def search_municipio(municipio_name: str) -> Optional[Dict[str, str]]:
         return None
     
     # Columnas clave para la búsqueda de coincidencia
-    # Usamos los nombres normalizados: MUNICIPIO, LOCALIDADES, CABECERA
     SEARCH_COLS = ["MUNICIPIO", "LOCALIDADES", "CABECERA"]
     
     try:
@@ -378,32 +328,24 @@ def search_municipio(municipio_name: str) -> Optional[Dict[str, str]]:
         rows = cur.fetchall()
         cols = [d[0] for d in cur.description]
         
-        # Mapear los índices de las columnas de búsqueda
         search_idx = {col: i for i, col in enumerate(cols) if col in SEARCH_COLS}
-        
         best_sim = 0.0
         best_row = None
         
         for r in rows:
             current_best_sim = 0.0
             
-            # Iterar sobre columnas MUNICIPIO, LOCALIDADES, CABECERA
             for col_name, idx in search_idx.items():
                 val = str(r[idx]) if r[idx] is not None else ""
                 
-                # Si es LOCALIDADES, separamos las entradas por coma para comparar individualmente
-                if col_name == "LOCALIDADES":
-                    localidades = [l.strip() for l in val.split(',') if l.strip()]
-                else:
-                    # Para MUNICIPIO y CABECERA, el valor completo es el candidato
-                    localidades = [val]
+                # Para LOCALIDADES, compara cada entrada por separado
+                localidades = [l.strip() for l in val.split(',') if l.strip()] if col_name == "LOCALIDADES" else [val]
                 
                 for cand_val in localidades:
                     cand_val_norm = normalize_text(cand_val)
                     if not cand_val_norm or len(cand_val_norm) < 3:
                         continue
                     
-                    # Usamos SequenceMatcher para similitud difusa
                     sim = difflib.SequenceMatcher(None, q, cand_val_norm).ratio()
                     
                     if sim > current_best_sim:
@@ -431,27 +373,23 @@ def search_municipio(municipio_name: str) -> Optional[Dict[str, str]]:
 
 
 def extract_and_search_municipio(user_text: str) -> Optional[Dict[str, str]]:
-    """Intenta extraer un posible nombre de municipio/localidad/cabecera desde el texto y busca en DB.
-    Usa patrones con preposiciones (de/en la/el) y sufijos de 1-3 palabras.
-    La búsqueda real la delega a `search_municipio` que ahora maneja municipio, localidad y cabecera.
-    """
+    """Intenta extraer un posible nombre de municipio/localidad/cabecera desde el texto y busca en DB."""
     if not user_text:
         return None
     text_norm = normalize_text(user_text)
     words = text_norm.split()
     candidates: List[str] = []
 
-    # Patrones con preposiciones comunes
+    # Patrones con preposiciones comunes y sufijos
     m = re.search(r"\b(?:de|en)\s+(la\s+|el\s+)?([a-z\s]{2,})$", text_norm)
     if m:
         tail = m.group(2).strip()
-        # Tomar últimos 1-3 tokens del tail
         tail_words = tail.split()
         for n in range(3, 0, -1):
             if len(tail_words) >= n:
                 candidates.append(" ".join(tail_words[-n:]))
 
-    # Sufijos globales del enunciado, últimos 1-3 tokens
+    # Sufijos globales del enunciado
     for n in range(3, 0, -1):
         if len(words) >= n:
             candidates.append(" ".join(words[-n:]))
@@ -465,16 +403,14 @@ def extract_and_search_municipio(user_text: str) -> Optional[Dict[str, str]]:
             uniq_candidates.append(c)
 
     for cand in uniq_candidates:
-        res = search_municipio(cand) # `search_municipio` ahora busca en todas las columnas clave
+        res = search_municipio(cand)
         if res:
             return res
     return None
 
 
 def find_municipio_in_text(user_text: str) -> Optional[Dict[str, str]]:
-    """Busca un municipio, localidad o cabecera mencionado literalmente en el texto del usuario.
-    Retorna la fila completa del municipio si encuentra coincidencia por substring con límites de palabra.
-    """
+    """Busca municipio/localidad/cabecera mencionado literalmente en el texto del usuario (búsqueda estricta)."""
     if not user_text:
         return None
     text_norm = normalize_text(user_text)
@@ -485,8 +421,6 @@ def find_municipio_in_text(user_text: str) -> Optional[Dict[str, str]]:
         rows = cur.fetchall()
         cols = [d[0] for d in cur.description]
 
-        # Columnas clave para la búsqueda de coincidencia
-        # Usamos los nombres normalizados: MUNICIPIO, LOCALIDADES, CABECERA
         SEARCH_COLS = ["MUNICIPIO", "LOCALIDADES", "CABECERA"]
         search_idx = {col: i for i, col in enumerate(cols) if col in SEARCH_COLS}
 
@@ -494,18 +428,11 @@ def find_municipio_in_text(user_text: str) -> Optional[Dict[str, str]]:
             return None
 
         for r in rows:
-            # Iterar sobre columnas MUNICIPIO, LOCALIDADES, CABECERA
             for col_name, idx in search_idx.items():
                 val = str(r[idx]) if r[idx] is not None else ""
                 raw = val.strip()
 
-                # Si es LOCALIDADES, separamos las entradas por coma para generar candidatos individuales
-                if col_name == "LOCALIDADES":
-                    # Candidatos primarios: cada localidad individual
-                    primary_cands = [l.strip() for l in raw.split(',') if l.strip()]
-                else:
-                    # Para MUNICIPIO y CABECERA, el valor completo es el candidato primario
-                    primary_cands = [raw]
+                primary_cands = [l.strip() for l in raw.split(',') if l.strip()] if col_name == "LOCALIDADES" else [raw]
                 
                 for primary in primary_cands:
                     if not primary: continue
@@ -514,35 +441,32 @@ def find_municipio_in_text(user_text: str) -> Optional[Dict[str, str]]:
                     if not name_norm_full or len(name_norm_full) < 3:
                         continue
 
-                    # Generar candidatos: nombre completo normalizado y variantes primarias/sin prefijos
                     candidates = [name_norm_full]
-                    # Dividir por separadores comunes y tomar el primer tramo
+                    
                     parts = re.split(r"\s*[-–—\(,/+]\s*", primary, maxsplit=1)
                     if parts[0].strip() != primary:
                         part_norm = normalize_text(parts[0].strip())
                         if part_norm and part_norm not in candidates:
                             candidates.append(part_norm)
 
-                    # Quitar prefijos comunes
+                    # Quitar prefijos comunes (ej: "municipio de")
                     for prefix in ["municipio de ", "partido de ", "ciudad de "]:
                         if name_norm_full.startswith(normalize_text(prefix)):
                             cand = name_norm_full[len(normalize_text(prefix)) :].strip()
                             if cand and cand not in candidates:
                                 candidates.append(cand)
                     
-                    # Probar cada candidato con límites de palabra
+                    # Probar cada candidato con límites de palabra para evitar falsos positivos
                     for cand in candidates:
                         if len(cand) < 3:
                             continue
                         pattern = r"\b" + re.escape(cand) + r"\b"
                         if re.search(pattern, text_norm):
                             conn.close()
-                            # Retorna la fila completa del municipio asociado a esa localidad/cabecera/municipio
                             return {
                                 cols[i]: (str(r[i]) if r[i] is not None else "")
                                 for i in range(len(cols))
                             }
-            # Fin de la iteración de búsqueda
 
         conn.close()
         return None
@@ -556,26 +480,25 @@ def find_municipio_in_text(user_text: str) -> Optional[Dict[str, str]]:
 
 
 # -----------------------------------------------------------------------------
-# Ollama
+# Ollama Call
 # -----------------------------------------------------------------------------
 def call_ollama(
     messages: List[Dict[str, str]], model: str = "gemma2:2b", timeout: int = 120
 ) -> str:
-    """Llama al endpoint de Ollama y devuelve la respuesta CRUDA de la IA (texto)."""
+    """Llama al endpoint de Ollama y devuelve la respuesta CRUDA de la IA."""
     global current_endpoint_index
     last_error = None
     n = len(OLLAMA_ENDPOINTS)
     if n == 0:
-        return "No hay endpoints de Ollama configurados. Revise OLLAMA_ENDPOINT y docker-compose."
+        return "No hay endpoints de Ollama configurados."
         
-    # Usamos gemma2:2b como default (o lo que esté en OLLAMA_MODEL)
     model_to_use = os.getenv("OLLAMA_MODEL", model) 
 
     for i in range(n):
         idx = (current_endpoint_index + i) % n
         endpoint = OLLAMA_ENDPOINTS[idx].rstrip("/")
         url = f"{endpoint}/api/chat"
-        # FORMATO JSON SOLICITADO AQUÍ (IMPORTANTE)
+        # Solicitud estricta de FORMATO JSON para la clasificación
         payload = {"model": model_to_use, "messages": messages, "stream": False, "format": "json"} 
         headers = {"Content-Type": "application/json"}
         try:
@@ -585,32 +508,19 @@ def call_ollama(
             data = resp.json()
             
             # --- Lógica de Extracción de Contenido de Ollama ---
-            
-            # 1. Formato /api/chat (más común en las últimas versiones)
             if "message" in data and isinstance(data["message"], dict):
                 content = data["message"].get("content", "")
                 if content:
                     return content.strip()
             
-            # 2. Formato /api/generate (o variantes antiguas)
             if "response" in data and isinstance(data["response"], str):
                 return data["response"].strip()
                 
-            # 3. Formato ChatCompletion (menos común)
-            if (
-                "choices" in data
-                and isinstance(data["choices"], list)
-                and len(data["choices"]) > 0
-            ):
+            if ("choices" in data and isinstance(data["choices"], list) and len(data["choices"]) > 0):
                 first = data["choices"][0]
-                if (
-                    isinstance(first, dict)
-                    and "message" in first
-                    and isinstance(first["message"], dict)
-                ):
+                if (isinstance(first, dict) and "message" in first and isinstance(first["message"], dict)):
                     return first["message"].get("content", "").strip()
 
-            # Si no encontramos contenido en los formatos esperados, devolvemos el JSON crudo (como string) para debug
             return json.dumps(data) 
 
         except Exception as e:
@@ -625,7 +535,6 @@ def call_ollama(
 # -----------------------------------------------------------------------------
 def load_system_prompt() -> str:
     try:
-        # ESTE ARCHIVO DEBE CONTENER LAS INSTRUCCIONES ESTRICTAS DE JSON 
         with open("system_prompt.txt", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
@@ -635,26 +544,20 @@ SYSTEM_PROMPT = load_system_prompt()
 
 
 # -----------------------------------------------------------------------------
-# Rutas Flask (Sin Indentación al inicio)
+# Endpoints
 # -----------------------------------------------------------------------------
 @app.route("/")
 def serve_html():
-    return send_from_directory(os.getcwd(), "chat.html") # Mantenemos el HTML para el demo, pero el cliente es la API.
+    return send_from_directory(os.getcwd(), "chat.html")
 
 
-# -----------------------------------------------------------------------------
-# Endpoint principal: /generate (API DE CLASIFICACIÓN FINAL)
-# -----------------------------------------------------------------------------
 @app.route("/generate", methods=["POST"])
 def generate():
     try:
-        # --- Rate limiting y validación ---
+        # --- Rate limiting y concurrencia ---
         client_ip = _get_client_ip()
         if not _ip_allow(client_ip):
-            return (
-                jsonify({"error": "Rate limit exceeded"}),
-                429,
-            )
+            return (jsonify({"error": "Rate limit exceeded"}), 429)
         
         data = request.get_json(silent=True) or {}
         user_prompt = data.get("prompt")
@@ -662,14 +565,9 @@ def generate():
         if not isinstance(user_prompt, str) or not user_prompt.strip():
             return jsonify({"error": "Entrada inválida: 'prompt' es requerido"}), 400
 
-        # --- Manejo de session_id (Solo para log/trazabilidad, no para historial de chat) ---
-        raw_session = data.get("session_id")
-        if isinstance(raw_session, str) and re.fullmatch(r"[a-z0-9-]{1,64}", raw_session.strip().lower()):
-            session_id = raw_session.strip().lower()
-        else:
-            session_id = str(uuid.uuid4())
+        session_id = str(uuid.uuid4()) # Usado para logs/trazabilidad
 
-        # --- Detección de municipio (Opcional, para contexto) ---
+        # --- Detección y Contexto (RAG Component) ---
         municipio_found = (
             find_municipio_in_text(user_prompt)
             or search_municipio(user_prompt)
@@ -678,57 +576,41 @@ def generate():
 
         municipio_context = ""
         if municipio_found:
-            # Guardamos el municipio en la sesión (opcional, pero mantenemos la estructura)
-            lst = municipio_consultado_by_session.get(session_id, [])
-            if not any(d.get("MUNICIPIO") == municipio_found.get("MUNICIPIO") for d in lst):
-                lst.append(municipio_found)
-            municipio_consultado_by_session[session_id] = lst
             municipio_context = format_municipio_data(municipio_found)
             municipio_context = "\n\n📍 *Información del municipio detectado:*\n" + municipio_context + "\n\n"
         
-        # --- Preparación para Ollama ---
-        
-        messages_for_ollama = [
-            {"role": "system", "content": SYSTEM_PROMPT}, 
-        ]
+        # --- Preparación de mensajes para Ollama ---
+        messages_for_ollama = [{"role": "system", "content": SYSTEM_PROMPT}]
         
         if municipio_context:
              messages_for_ollama.append({"role": "system", "content": "Contexto municipal:\n" + municipio_context})
         
-        # El último mensaje es la entrada del usuario
         messages_for_ollama.append({"role": "user", "content": user_prompt})
 
-        # --- Llamada a Ollama ---
+        # --- Llamada a Ollama con Semaphore de GPU ---
         if not _try_acquire_gpu():
-            return (
-                jsonify({
-                    "error": "System busy",
-                    "reason": "gpu_queue_full",
-                }),
-                429,
-            )
+            return (jsonify({"error": "System busy", "reason": "gpu_queue_full"}), 429)
         try:
             response_text = call_ollama(messages_for_ollama) 
         finally:
             _release_gpu()
 
         # ---------------------------------------------------------------------
-        # LÓGICA CLAVE: PARSEO Y CLASIFICACIÓN DE JSON (MANEJO DEL ERROR_MODELO)
+        # LÓGICA DE ROBUSTEZ: PARSEO Y FALLBACK DE JSON
         # ---------------------------------------------------------------------
         parsed_json = None
         raw_response = response_text
         
-        # 1. Intentamos leer la respuesta CRUDA como JSON. Esto funciona si el modelo obedece al 100%.
+        # 1. Intento simple de carga JSON
         try:
             parsed_json = json.loads(raw_response)
         except json.JSONDecodeError:
-            # 2. Si falla, es probable que la respuesta esté envuelta en texto o Markdown.
+            # 2. Fallback Regex: Extrae JSON envuelto en Markdown (```json {...} ```) o texto
             
-            # Buscar el bloque JSON encerrado en Markdown (```json {...} ```)
             match = re.search(r"```json\s*(\{.*\})\s*```", raw_response, re.DOTALL)
             
             if not match:
-                # Si no hay Markdown, buscamos el primer '{' hasta el último '}'
+                # Intento de extracción buscando el primer '{' hasta el último '}'
                 start = raw_response.find('{')
                 end = raw_response.rfind('}')
                 
@@ -737,35 +619,35 @@ def generate():
                     try:
                         parsed_json = json.loads(json_string)
                     except json.JSONDecodeError:
-                        pass # Falló la extracción simple, pasamos al fallback
+                        pass
             else:
-                # Si se encuentra el patrón Markdown, usamos el grupo capturado
+                # Usa el JSON capturado por el patrón Markdown
                 json_string = match.group(1)
                 try:
                     parsed_json = json.loads(json_string)
                 except json.JSONDecodeError:
-                    pass # Falló el JSON dentro del Markdown
+                    pass
 
         
-        # --- Resultado Final del Procesamiento ---
-        # *** AJUSTE CRÍTICO: Verificamos el campo 'Clasificacion' ***
+        # --- Verificación de Clasificación y Manejo de Fallo ---
+        # *** Verificación Crítica: Buscamos el campo 'Clasificacion' para éxito ***
         if parsed_json and isinstance(parsed_json, dict) and "Clasificacion" in parsed_json:
-            # Éxito: Devolvemos el objeto JSON clasificado
+            # Éxito: El LLM devolvió un JSON válido con el campo requerido.
             return jsonify({
                 "role": "assistant",
-                "content": parsed_json,  # El objeto JSON clasificado
+                "content": parsed_json,
                 "session_id": session_id,
                 "type": "structured_data"
             })
         else:
-            # Fallo: La IA no devolvió un JSON válido y/o no contenía el campo clave.
+            # Fallo del Modelo: El JSON no se pudo extraer o no contenía la clave 'Clasificacion'.
             app.logger.error("JSONDecodeError: Fallo en la extracción de JSON o campo 'Clasificacion' faltante.")
             
-            # *** AJUSTE: Devolvemos un fallback que el Frontend puede renderizar ***
+            # *** Fallback Estructurado: Devuelve ERROR_MODELO para el Frontend ***
             return jsonify({
                 "role": "assistant",
                 "content": {
-                    "Urgencia": "5", # Urgencia alta para error
+                    "Urgencia": "5",
                     "Clasificacion": "ERROR_MODELO", 
                     "respuesta_extendida": 
                         "**Error de Clasificación (Modelo Fallido):** La IA no pudo generar el formato de datos necesario. " +
@@ -774,14 +656,14 @@ def generate():
                 },
                 "session_id": session_id,
                 "type": "error_fallback"
-            }), 500 # Devolvemos un 500 para alertar que el modelo no cumplió
+            }), 500
 
     except Exception as e:
         app.logger.exception("Error general en /generate: %s", e)
         return jsonify({"error": str(e)}), 500
 
 # -----------------------------------------------------------------------------
-# Rutas de Configuración (get/save_prompt)
+# Rutas de Configuración del Prompt
 # -----------------------------------------------------------------------------
 @app.route("/get_prompt", methods=["GET"])
 def get_prompt():
@@ -802,7 +684,7 @@ def save_prompt():
         with open("system_prompt.txt", "w", encoding="utf-8") as f:
             f.write(new_content)
         
-        # Recargar el prompt en memoria después de guardar
+        # Recarga global del prompt para aplicar cambios inmediatamente
         global SYSTEM_PROMPT
         SYSTEM_PROMPT = load_system_prompt()
         
@@ -813,9 +695,8 @@ def save_prompt():
 
 
 # -----------------------------------------------------------------------------
-# Run (Sin Indentación al inicio)
+# Run
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    # Asegúrate de que Flask escuche en 0.0.0.0 para Docker
-    # Usa el puerto 8001 para coincidir con tu docker-compose.yml y nginx.conf
+    # Escucha en 0.0.0.0 y usa el puerto 8001 (configuración de Docker)
     app.run(host='0.0.0.0', port=os.getenv("FLASK_PORT", 8001))
